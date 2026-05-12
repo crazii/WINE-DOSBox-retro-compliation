@@ -1,13 +1,20 @@
 # WINE-DOSBox-retro-compilation
 
-what it is: a collection of customization notes to improve the retro gaming experience for WINE and DOSBox  
+what this is: a collection of customization notes to improve the retro gaming experience for WINE and DOSBox  
 
-what it is NOT: there might be guide to workaround problems. but it is not a step-by-step stup guide.
+what this is NOT: there might be guide to workaround problems. but it is not a step-by-step stup guide.
 
 ## Fluidsynth
 
 fluidsynth (https://github.com/fluidsynth/fluidsynth) is a software synthesizer using SoundFont2,
 it works for DOSBox and Wine. Some Linux distro include the package in the installation, you only need to add & enable a user service for it.  
+
+There is no extra config needed for WINE, but for DOSBox to use fluidsynth, you need to change the conf file in  ``~/.dosbox/``  
+e.g.:
+```
+[midi]
+midiconfig=128:0
+```
 
 For retro-gaming, the recommended SoundFont file is ``SC-55`` or ``Yamaha-XG`` sound font, those can be obtained online.
 
@@ -34,6 +41,14 @@ quiet
 ## WineVDM patch
 
 The patch for WineVDM is to pass ``-t cdrom`` and ``usecd #n`` to DOSBox, so that the emulated CD-ROM by CDEmu can be directly usable by runing a MZ EXE via WINE.
+
+There is a sample of patch for winevdm in this repo, your can build it and replace the default winevdm.exe in your wineprefix.  
+
+The patch also enables an alternative for DOSBox, e.g. DOSBox-X. To use DOSBox-X, open wine regedit:  
+add a string value (REG_SZ) named ``winevdm`` with value "dosbox-x" in HKEY_LOCAL_MACHINE\\Software\\Wow6432Node\\Wine  
+
+With this patch, along with CDEmu, now your can double-click a .cue and then double-click a DOS EXE to run with CD Music, without any ``imgmount``. The music is played by CDEmu instead of DOSBox.
+
 
 ## Look and Feel
 

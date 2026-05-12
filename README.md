@@ -64,10 +64,11 @@ You can add it to your filemanager. Examples for Thunar (XFCE) :
 
 - Open a Thunar window
 - Menu ``Edit`` => ``Config custom actions...``
-- Add a new action by click the "PLUS" sign
+- Add a new action by click the "PLUS" sign in ``Basic`` Tab
 - Set Name, e.g. "Create desktop shortcut (for EXE)", 
 - Set command ``exe-shortcut %d/%n``
-- Set optional hotkey shortcut and menu icon, and click OK
+- Set optional hotkey shortcut and menu item icon
+- Click ``Appearance Conditions`` tab, set ``*.exe;*.EXE`` in ``File Pattern`` field, ``1-1`` in ``Range (min-max)`` field, and click OK
 
 After thant you can right click an EXE (PE/MZ) and create a .desktop file for it, the file is placed on destktop.  
 NOTE: for MZ: exe-shortcut will first search the folder of the DOS MZ to find a valid ico to use for the .desktop, if not found an old "MS-DOS" icon will be used.  

@@ -1,5 +1,5 @@
 MODULE    = winevdm.exe
-IMPORTS   = user32 kernel
+IMPORTS   = user32 kernel advapi32.lib
 
 EXTRADLLFLAGS = -mwindows
 

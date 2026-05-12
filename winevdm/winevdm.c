@@ -30,6 +30,13 @@
 #include "winuser.h"
 #include "wincon.h"
 #include "wine/debug.h"
+#include "winreg.h"
+#include "winioctl.h"
+#define WINE_MOUNTMGR_EXTENSIONS
+#include "ddk/mountmgr.h"
+
+#include <unistd.h>
+
 
 WINE_DEFAULT_DEBUG_CHANNEL(winevdm);
 
@@ -103,6 +110,55 @@ typedef struct {
 
 #pragma pack(pop)
 
+
+static HANDLE open_mountmgr(void)
+{
+    HANDLE ret;
+
+    if ((ret = CreateFileW( MOUNTMGR_DOS_DEVICE_NAME, GENERIC_READ|GENERIC_WRITE,
+                            FILE_SHARE_READ|FILE_SHARE_WRITE, NULL, OPEN_EXISTING,
+                            0, 0 )) == INVALID_HANDLE_VALUE)
+        WINE_ERR( "failed to open mount manager err %lu\n", GetLastError() );
+    return ret;
+}
+
+static DWORD get_drive_type( char letter, DWORD* cd_index)
+{
+    DWORD ret = DRIVE_UNKNOWN;
+    char buffer[4096];
+
+    char *unixpath = NULL, *device = NULL;
+    char num;
+    HANDLE mgr;
+    struct mountmgr_unix_drive input;
+    struct mountmgr_unix_drive* output = (void*)buffer;
+
+    *cd_index = (DWORD)-1;
+    do {
+        if ((mgr = open_mountmgr()) == INVALID_HANDLE_VALUE) break;
+        memset( &input, 0, sizeof(input) );
+        input.letter = toupper(letter);
+
+        if (!DeviceIoControl( mgr, IOCTL_MOUNTMGR_QUERY_UNIX_DRIVE, &input, sizeof(input),
+            buffer, sizeof(buffer), NULL, NULL )) break;
+        ret = output->type;
+        if(output->type != DRIVE_CDROM) break;
+        ret = DRIVE_UNKNOWN;
+
+        //reading the device (/dev/sr0 or /dev/cdrom0) can decide the index
+        //or we can provide a user reg key, but less convinient
+        if (output->device_offset) device = (char *)output + output->device_offset;
+        if (output->mount_point_offset) unixpath = (char *)output + output->mount_point_offset;
+        if(!device || !unixpath) break; //unixpath could be NULL, if media not present so not actually mounted, skip
+        ret = output->type;
+        num = device[strlen(device)-1];
+        if(num >= '0' && num <= '9')
+            *cd_index = num - '0';
+    }while(0);
+    CloseHandle( mgr );
+    return ret;
+}
+
 /***********************************************************************
  *           start_dosbox
  */
@@ -125,13 +181,13 @@ static void start_dosbox( const char *appname, const char *args )
     file = CreateFileW( config, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, 0, 0 );
     if (file == INVALID_HANDLE_VALUE) return;
 
-    buffer = HeapAlloc( GetProcessHeap(), 0, sizeof("[autoexec]") +
-                        sizeof("mount -z c") + sizeof("config -securemode") +
-                        26 * (strlen(prefix) + sizeof("mount c /dosdevices/c:")) +
+    buffer = HeapAlloc( GetProcessHeap(), 0, sizeof("[autoexec]\n@echo off\n") +
+                        26 * sizeof("mount -z c\n") + sizeof("config -securemode\ncls\n") +
+                        26 * (strlen(prefix) + sizeof("mount -u c > nul\nmount c /dosdevices/c: -t cdrom -usecd 0 -ioctl\n")) +
                         4 * lstrlenW( path ) +
                         6 + strlen( app ) + strlen( args ) + 20 );
     p = buffer;
-    p += sprintf( p, "[autoexec]\n" );
+    p += sprintf( p, "[autoexec]\n@echo off\n" );
     for (i = 25; i >= 0; i--)
         if (!(drives & (1 << i)))
         {
@@ -140,19 +196,50 @@ static void start_dosbox( const char *appname, const char *args )
         }
     for (i = 0; i <= 25; i++)
     {
+        DWORD type;
+        DWORD cd_index = (DWORD)-1;
         if (!(drives & (1 << i))) continue;
-        p += sprintf( p, "mount %c %s/dosdevices/%c:\n", 'a' + i, prefix, 'a' + i );
+        type = get_drive_type('a' + i, &cd_index);
+        if(type == DRIVE_UNKNOWN) continue;
+        p += sprintf( p, "mount -u %c > nul\n", 'a' + i); //incase dosbox's default config [autoexec] mount something
+        p += sprintf( p, "mount %c %s/dosdevices/%c:", 'a' + i, prefix, 'a' + i );
+        if(type == DRIVE_CDROM)
+        {
+            if (cd_index < 25)
+                p += sprintf( p, " -t cdrom -usecd %ld -ioctl", cd_index);
+            else
+                p += sprintf( p, " -t cdrom");
+        }
+        else if(type == DRIVE_REMOVABLE)
+            p += sprintf( p, " -t floppy");
+        p += sprintf( p, "\n");
     }
     p += sprintf( p, "%c:\ncd ", path[0] );
     p += WideCharToMultiByte( CP_UNIXCP, 0, path + 2, -1, p, 4 * lstrlenW(path), NULL, NULL ) - 1;
-    p += sprintf( p, "\nconfig -securemode\n" );
+    p += sprintf( p, "\nconfig -securemode\ncls\n" );
     p += sprintf( p, "%s %s\n", app, args );
     p += sprintf( p, "exit\n" );
     if (WriteFile( file, buffer, strlen(buffer), &written, NULL ) && written == strlen(buffer))
     {
         const char *args[5];
         char *config_file = wine_get_unix_file_name( config );
+
+        //read the registry HKLM\\Software\\Wine\\winevdm to launch the program,
+        //i.e. dosbox-x or other forks. default to "dosbox" if the registry key not found.
+        HKEY hKey;
         args[0] = DOSBOX;
+        if (RegOpenKeyA(HKEY_LOCAL_MACHINE, "Software\\Wine", &hKey) != ERROR_SUCCESS)
+            WINE_TRACE("  Unable to open Software\\Wine\n" );
+        else
+        {
+            char buffer[256];
+            DWORD size = sizeof(buffer);
+
+            if (!RegQueryValueExA(hKey, "winevdm", NULL, NULL, (LPBYTE)buffer, &size ))
+                args[0] = buffer;
+            RegCloseKey(hKey);
+        }
+
         args[1] = "-userconf";
         args[2] = "-conf";
         args[3] = config_file;

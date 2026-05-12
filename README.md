@@ -24,7 +24,7 @@ NOTE: DOSBOX uses SDL1, modern distribution of SDL1 (sdl12_compat via SDL2) remo
 NOTE: CDEmu uses libao to play CD music, on some systems the default config of libao doesn't have music for CDEmu, you may need to comment out the ``dev=default`` line in ``/etc/libao.conf``. Here is a sample of libao.conf:
 
 ```
-#default_driver=alsa #uncomment this line if you prefer alsa, otherwise use pulseaudio or others
+#default_driver=alsa #uncomment this line if you prefer alsa
 default_driver=pulse
 #dev=default
 quiet

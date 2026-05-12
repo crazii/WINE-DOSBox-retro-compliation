@@ -1,8 +1,8 @@
 # WINE-DOSBox-retro-compilation
 
-what this is: a collection of customization notes to improve the retro gaming experience for WINE and DOSBox  
+What this is: a collection of customization notes to improve the retro gaming experience for WINE and DOSBox  
 
-what this is NOT: there might be guide to workaround problems. but it is not a step-by-step stup guide.
+What this is NOT: there might be guide to workaround problems. but it is NOT a step-by-step stup guide.
 
 ## Fluidsynth
 
@@ -26,7 +26,7 @@ CDEmu works for WINE and also provide CD Music playing that can used by DOSBox.
 
 For configuration, you can fllow the manual for CDEmu on unbuntu or Arch (e.g. https://manpages.ubuntu.com/manpages/stonking/man8/cdemu-daemon.8.html)  
 
-NOTE: DOSBOX uses SDL1, modern distribution of SDL1 (sdl12_compat via SDL2) removes CDROM support. For DOSBox to work with CDEmu, you need to remove ``sd12_compat`` and install the original sdl package.
+NOTE: DOSBOX uses SDL1, modern distribution of SDL1 (sdl12_compat via SDL2) removes CD-ROM support. For DOSBox to work with CDEmu, you need to remove ``sd12_compat`` and install the original sdl package, or you can use DOSBox-X (in WineVDM patch section).
 
 NOTE: CDEmu uses libao to play CD music, on some systems the default config of libao doesn't have music for CDEmu, you may need to comment out the ``dev=default`` line in ``/etc/libao.conf``. Here is a sample of libao.conf:
 
@@ -45,7 +45,7 @@ The patch for WineVDM is to pass ``-t cdrom`` and ``usecd #n`` to DOSBox, so tha
 There is a sample of patch for winevdm in this repo, your can build it and replace the default winevdm.exe in your wineprefix.  
 
 The patch also enables an alternative for DOSBox, e.g. DOSBox-X. To use DOSBox-X, open wine regedit:  
-add a string value (REG_SZ) named ``winevdm`` with value "dosbox-x" in HKEY_LOCAL_MACHINE\\Software\\Wow6432Node\\Wine  
+create a string value (REG_SZ) named ``winevdm`` with value "dosbox-x" in HKEY_LOCAL_MACHINE\\Software\\Wow6432Node\\Wine  
 
 With this patch, along with CDEmu, now your can double-click a .cue and then double-click a DOS EXE to run with CD Music, without any ``imgmount``. The music is played by CDEmu instead of DOSBox.
 
@@ -59,7 +59,8 @@ Chicago95 (https://github.com/grassmunk/chicago95) is a win9x theme for XFCE, re
 ### Icons
 
 icoextract (https://github.com/jlu5/icoextract) provide thumbnailers for PE exes.  
-I added thumbnailers for ``.desktop`` files which is linked to a PE/MZ, and a simple tool ``exe-shortcut`` to create shortcut for MZ/PE.  You can add it to your filemanager. Examples for Thunar (XFCE):  
+I added (https://github.com/crazii/icoextract) thumbnailers for ``.desktop`` files which is linked to a PE/MZ, and a simple tool ``exe-shortcut`` to create shortcut for MZ/PE.  
+You can add it to your filemanager. Examples for Thunar (XFCE) :  
 
 - Open a Thunar window
 - Menu ``Edit`` => ``Config custom actions...``
@@ -69,6 +70,5 @@ I added thumbnailers for ``.desktop`` files which is linked to a PE/MZ, and a si
 - Set optional hotkey shortcut and menu icon, and click OK
 
 After thant you can right click an EXE (PE/MZ) and create a .desktop file for it, the file is placed on destktop.  
-NOTE for MZ: exe-shortcut will first search the folder of the DOS MZ to find a valid ico to use for the .desktop, if not found an old "MS-DOS" icon will be used.
-
-
+NOTE: for MZ: exe-shortcut will first search the folder of the DOS MZ to find a valid ico to use for the .desktop, if not found an old "MS-DOS" icon will be used.  
+NOTE: the custom action has an XML config file, it is possible to add the custom action through script, but not tried yet.
